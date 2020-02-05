@@ -1,15 +1,18 @@
 from comet_ml import Experiment
-import keras
-from keras.layers import Input, Dense, Reshape, Flatten, Dropout
-from keras.layers import BatchNormalization, Activation, ZeroPadding2D
-from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.convolutional import UpSampling2D, Conv2D, MaxPooling2D, Conv2DTranspose
-from keras.models import Sequential, Model
-from keras.optimizers import Adam
+import tensorflow.keras as keras
+from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Dropout
+from tensorflow.keras.layers import BatchNormalization, Activation, ZeroPadding2D
+from tensorflow.keras.layers import LeakyReLU
+from tensorflow.keras.layers import UpSampling2D, Conv2D, MaxPooling2D, Conv2DTranspose
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.optimizers import Adam
 import os
 import gc
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.enable_eager_execution()
+tf.enable_resource_variables()
+tf.disable_v2_behavior()
 
 from deepprofiler.learning import model
 from deepprofiler.learning.model import DeepProfilerModel
@@ -160,7 +163,7 @@ class ModelClass(DeepProfilerModel):
             self.gan.generator.load_weights(generator_file)
             print("Weights from previous models loaded:", discriminator_file, generator_file)
         else:
-            keras.backend.get_session().run(tf.global_variables_initializer())  # workaround for tf bug
+            tf.compat.v1.keras.backend.get_session().run(tf.global_variables_initializer())  # workaround for tf bug
         # TODO: no callbacks
         epochs, steps, lr_schedule_epochs, lr_schedule_lr = model.setup_params(self, experiment)
         self.gan.train(epochs, steps, epoch)

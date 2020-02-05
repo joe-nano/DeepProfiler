@@ -1,5 +1,4 @@
-import keras
-import keras_resnet
+import tensorflow
 import keras_resnet.models
 
 from deepprofiler.learning.model import DeepProfilerModel
@@ -28,14 +27,14 @@ def define_model(config, dset):
         config["train"]["sampling"]["box_size"],  # width
         len(config["dataset"]["images"]["channels"])  # channels
     )
-    input_image = keras.layers.Input(input_shape)
+    input_image = tensorflow.keras.layers.Input(input_shape)
 
     num_layers = config["train"]["model"]["params"]["conv_blocks"]
     error_msg = str(num_layers) + " conv_blocks not in " + SM
     assert num_layers in supported_models.keys(), error_msg
     
     model = supported_models[num_layers](input_image, include_top=False)
-    features = keras.layers.GlobalAveragePooling2D(name="pool5")(model.layers[-1].output)
+    features = tensorflow.keras.layers.GlobalAveragePooling2D(name="pool5")(model.layers[-1].output)
 
     # TODO: factorize the multi-target output model
 
@@ -44,7 +43,7 @@ def define_model(config, dset):
 
     i = 0
     for t in dset.targets:
-        y = keras.layers.Dense(t.shape[1], activation="softmax", name=t.field_name)(features)
+        y = tensorflow.keras.layers.Dense(t.shape[1], activation="softmax", name=t.field_name)(features)
         class_outputs.append(y)
         i += 1
 
@@ -52,8 +51,8 @@ def define_model(config, dset):
     loss_func = "categorical_crossentropy"
 
     # 4. Create and compile model
-    model = keras.models.Model(inputs=input_image, outputs=class_outputs)
-    optimizer = keras.optimizers.SGD(lr=config["train"]["model"]["params"]["learning_rate"], momentum=0.9, nesterov=True)
+    model = tensorflow.keras.models.Model(inputs=input_image, outputs=class_outputs)
+    optimizer = tensorflow.keras.optimizers.SGD(lr=config["train"]["model"]["params"]["learning_rate"], momentum=0.9, nesterov=True)
 
     return model, optimizer, loss_func
 

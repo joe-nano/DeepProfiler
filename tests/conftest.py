@@ -8,6 +8,9 @@ import pandas as pd
 import deepprofiler.dataset.image_dataset
 import deepprofiler.dataset.metadata
 import deepprofiler.dataset.target
+import tensorflow.compat.v1 as tf
+tf.enable_eager_execution()
+tf.enable_resource_variables()
 
 def __rand_array():
     return np.array(random.sample(range(100), 12))

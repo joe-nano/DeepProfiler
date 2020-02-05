@@ -1,6 +1,5 @@
 import pytest
-import keras
-
+import tensorflow
 import deepprofiler.imaging.cropping
 import deepprofiler.dataset.image_dataset
 import deepprofiler.dataset.metadata
@@ -20,10 +19,10 @@ def val_generator():
 
 def test_define_model(config, dataset):
     vae, encoder, decoder, optimizer, loss = plugins.models.vae.define_model(config, dataset)
-    assert isinstance(vae, keras.Model)
-    assert isinstance(encoder, keras.Model)
-    assert isinstance(decoder, keras.Model)
-    assert isinstance(optimizer, str) or isinstance(optimizer, keras.optimizers.Optimizer)
+    assert isinstance(vae, tensorflow.keras.Model)
+    assert isinstance(encoder, tensorflow.keras.Model)
+    assert isinstance(decoder, tensorflow.keras.Model)
+    assert isinstance(optimizer, str) or isinstance(optimizer, tensorflow.keras.optimizers.Optimizer)
     assert isinstance(loss, str) or callable(loss)
 
 

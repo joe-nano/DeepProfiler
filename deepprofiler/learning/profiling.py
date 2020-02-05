@@ -1,11 +1,10 @@
 import importlib
 import os
 
-import keras
+import tensorflow
 import numpy as np
-import tensorflow as tf
-from keras import backend as K
-
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from deepprofiler.dataset.utils import tic, toc
 
 
@@ -30,7 +29,7 @@ class Profile(object):
         configuration.gpu_options.allow_growth = True
         self.sess = tf.Session(config=configuration)
         self.profile_crop_generator.start(self.sess)
-        K.set_session(self.sess)
+        tf.compat.v1.keras.backend.set_session(self.sess)
         
         # Create feature extractor
         if self.config["profile"]["pretrained"]:
@@ -39,7 +38,7 @@ class Profile(object):
             checkpoint = self.config["paths"]["checkpoints"]+"/"+self.config["profile"]["checkpoint"]
         self.dpmodel.feature_model.load_weights(checkpoint)
         self.dpmodel.feature_model.summary()
-        self.feat_extractor = keras.Model(self.dpmodel.feature_model.inputs, self.dpmodel.feature_model.get_layer(
+        self.feat_extractor = tensorflow.keras.Model(self.dpmodel.feature_model.inputs, self.dpmodel.feature_model.get_layer(
             self.config["profile"]["feature_layer"]).output)
         self.feat_extractor.summary()
 

@@ -1,12 +1,15 @@
 import importlib
 
-import keras
+import tensorflow.keras as keras
 import deepprofiler.learning.profiling
 import deepprofiler.dataset.image_dataset
 import deepprofiler.dataset.metadata
 import deepprofiler.dataset.target
 import pytest
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.enable_eager_execution()
+tf.enable_resource_variables()
+tf.disable_v2_behavior()
 import os
 import numpy as np
 

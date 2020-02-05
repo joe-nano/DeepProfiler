@@ -1,9 +1,9 @@
 from comet_ml import Experiment
 
-import keras
-from keras.layers import *
-from keras.models import Model, Sequential
-from keras.optimizers import Adam
+import tensorflow
+from tensorflow.keras.layers import *
+from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.optimizers import Adam
 
 from deepprofiler.learning.model import DeepProfilerModel
 
@@ -21,7 +21,7 @@ def define_model(config, dset):
         config["train"]["sampling"]["box_size"],  # width
         len(config["dataset"]["images"]["channels"])  # channels
     )
-    input_image = keras.layers.Input(input_shape)
+    input_image = tensorflow.keras.layers.Input(input_shape)
 
     if config["train"]["model"]["params"]["conv_blocks"] < 1:
         raise ValueError("At least 1 convolutional block is required.")
@@ -33,11 +33,11 @@ def define_model(config, dset):
         x = BatchNormalization()(x)
         x = Activation("relu")(x)
         x = MaxPooling2D((2, 2))(x)
-    conv_shape = x._keras_shape[1:]
+    conv_shape = x.shape[1:]
     x = Flatten()(x)
-    flattened_shape = x._keras_shape[1:]
+    flattened_shape = x.shape[1:]
     encoded = Dense(config["train"]["model"]["params"]["feature_dim"], name="encoded")(x)
-    encoded_shape = encoded._keras_shape[1:]
+    encoded_shape = encoded.shape[1:]
     encoder = Model(input_image, encoded)
 
     # Build decoder

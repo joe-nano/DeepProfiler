@@ -12,9 +12,12 @@ import warnings
 from comet_ml import Experiment
 
 
-import keras
-import keras.applications
-import tensorflow as tf
+import tensorflow.keras
+import tensorflow.keras.applications
+import tensorflow.compat.v1 as tf
+tf.enable_eager_execution()
+tf.enable_resource_variables()
+tf.disable_v2_behavior()
 
 from deepprofiler.learning.model import DeepProfilerModel
 
@@ -26,10 +29,10 @@ def define_model(config, dset):
         config["train"]["sampling"]["box_size"],  # width
         len(config["dataset"]["images"]["channels"])  # channels
     )
-    input_image = keras.layers.Input(input_shape)
+    input_image = tensorflow.keras.layers.Input(input_shape)
 
 
-    model = keras.applications.DenseNet121(
+    model = tensorflow.keras.applications.DenseNet121(
          input_shape=input_shape, 
          classes=dset.targets[0].shape[1], 
          input_tensor=input_image,
@@ -42,7 +45,7 @@ def define_model(config, dset):
     loss_func = "categorical_crossentropy"
 
     # 4. Create and compile model
-    optimizer = keras.optimizers.Adam(lr=config["train"]["model"]["params"]["learning_rate"])
+    optimizer = tensorflow.keras.optimizers.Adam(lr=config["train"]["model"]["params"]["learning_rate"])
 
     return model, optimizer, loss_func
 

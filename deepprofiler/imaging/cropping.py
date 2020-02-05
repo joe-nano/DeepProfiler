@@ -1,10 +1,10 @@
 import gc
 import threading
 import time
-
-import keras
 import numpy as np
-import tensorflow as tf
+import tensorflow
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 import deepprofiler.dataset.utils
 import deepprofiler.imaging.augmentations
@@ -320,7 +320,7 @@ class SingleImageCropGenerator(CropGenerator):
         self.image_pool = output["image_batch"][valid, ...]
         self.label_pool = output["target_0"][valid, ...]  
         num_classes = self.dset.targets[0].shape[1]
-        self.label_pool = keras.utils.to_categorical(self.label_pool,num_classes=num_classes)
+        self.label_pool = tensorflow.keras.utils.to_categorical(self.label_pool,num_classes=num_classes)
 
         return total_crops 
 

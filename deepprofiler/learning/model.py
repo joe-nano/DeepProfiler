@@ -5,9 +5,12 @@ import abc
 
 
 import comet_ml
-import keras
+import tensorflow
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.enable_eager_execution()
+tf.enable_resource_variables()
+tf.disable_v2_behavior()
 
 import deepprofiler.dataset.utils
 import deepprofiler.imaging.cropping
@@ -67,7 +70,7 @@ class DeepProfilerModel(abc.ABC):
             callbacks = None
         # Create params (epochs, steps, log model params to comet ml)
 
-        #keras.backend.get_session().run(tf.initialize_all_variables())
+        #tf.compat.v1.keras.backend.get_session().run(tf.initialize_all_variables())
         # Train model
         self.feature_model.fit_generator(
             generator=self.train_crop_generator.generate(crop_session),
@@ -86,7 +89,7 @@ class DeepProfilerModel(abc.ABC):
 
 
 def check_feature_model(dpmodel):
-    if "feature_model" not in vars(dpmodel) or not isinstance(dpmodel.feature_model, keras.Model):
+    if "feature_model" not in vars(dpmodel) or not isinstance(dpmodel.feature_model, tensorflow.keras.Model):
         raise ValueError("Feature model is not properly defined.")
 
 
@@ -125,7 +128,7 @@ def start_val_session(dpmodel, configuration):
     crop_graph = tf.Graph()
     with crop_graph.as_default():
         val_session = tf.Session(config=configuration)
-        keras.backend.set_session(val_session)
+        tf.compat.v1.keras.backend.set_session(val_session)
         dpmodel.val_crop_generator.start(val_session)
         x_validation, y_validation = deepprofiler.learning.validation.load_validation_data(
             dpmodel.config,
@@ -138,7 +141,7 @@ def start_val_session(dpmodel, configuration):
 
 def start_main_session(configuration):
     main_session = tf.Session(config=configuration)
-    keras.backend.set_session(main_session)
+    tf.compat.v1.keras.backend.set_session(main_session)
     return main_session
 
 
@@ -150,13 +153,13 @@ def load_weights(dpmodel, epoch):
         print("Weights from previous model loaded:", previous_model)
     else:
         # Initialize all tf variables to avoid tf bug
-        keras.backend.get_session().run(tf.global_variables_initializer())
+        tf.compat.v1.keras.backend.get_session().run(tf.global_variables_initializer())
 
 
 def setup_callbacks(dpmodel, lr_schedule_epochs, lr_schedule_lr, dset):
     # Checkpoints
     output_file = dpmodel.config["paths"]["checkpoints"] + "/checkpoint_{epoch:04d}.hdf5"
-    callback_model_checkpoint = keras.callbacks.ModelCheckpoint(
+    callback_model_checkpoint = tensorflow.keras.callbacks.ModelCheckpoint(
         filepath=output_file,
         save_weights_only=True,
         save_best_only=False
@@ -164,10 +167,10 @@ def setup_callbacks(dpmodel, lr_schedule_epochs, lr_schedule_lr, dset):
     
     # CSV Log
     csv_output = dpmodel.config["paths"]["logs"] + "/log.csv"
-    callback_csv = keras.callbacks.CSVLogger(filename=csv_output)
+    callback_csv = tensorflow.keras.callbacks.CSVLogger(filename=csv_output)
 
     # Queue stats
-    qstats = keras.callbacks.LambdaCallback(
+    qstats = tensorflow.keras.callbacks.LambdaCallback(
         on_train_begin=lambda logs: dset.show_setup(),
         on_epoch_end=lambda epoch, logs: dset.show_stats()
     )
@@ -181,7 +184,7 @@ def setup_callbacks(dpmodel, lr_schedule_epochs, lr_schedule_lr, dset):
 
     # Collect all callbacks
     if lr_schedule_epochs:
-        callback_lr_schedule = keras.callbacks.LearningRateScheduler(lr_schedule, verbose=1)
+        callback_lr_schedule = tensorflow.keras.callbacks.LearningRateScheduler(lr_schedule, verbose=1)
         callbacks = [callback_model_checkpoint, callback_csv, callback_lr_schedule, qstats]
     else:
         callbacks = [callback_model_checkpoint, callback_csv, qstats]

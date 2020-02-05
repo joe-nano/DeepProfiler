@@ -1,7 +1,9 @@
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.enable_eager_execution()
+tf.enable_resource_variables()
+tf.disable_v2_behavior()
 import deepprofiler.imaging.cropping
-from keras.applications import inception_resnet_v2
 
 def repeat_channels(crops):
     resized_crops = tf.image.resize_images(crops, size=(299, 299))

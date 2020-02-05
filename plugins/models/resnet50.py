@@ -1,9 +1,11 @@
-import keras
-import keras.applications
-import keras.applications.imagenet_utils
-import keras.applications.resnet50
+import tensorflow
+import tensorflow_addons
+import tensorflow.keras.applications
+import tensorflow.keras.applications.imagenet_utils
+import tensorflow.keras.applications.resnet50
 import os
 import warnings
+import keras_applications
 
 from deepprofiler.learning.model import DeepProfilerModel
 
@@ -40,39 +42,39 @@ def conv_block(input_tensor,
     And the shortcut should have strides=(2, 2) as well
     """
     filters1, filters2, filters3 = filters
-    if keras.backend.image_data_format() == 'channels_last':
+    if tensorflow.keras.backend.image_data_format() == 'channels_last':
         bn_axis = 3
     else:
         bn_axis = 1
     conv_name_base = 'res' + str(stage) + block + '_branch'
     bn_name_base = 'bn' + str(stage) + block + '_branch'
 
-    x = keras.layers.Conv2D(filters1, (1, 1), strides=(1, 1),
+    x = tensorflow.keras.layers.Conv2D(filters1, (1, 1), strides=(1, 1),
                       kernel_initializer='he_normal',
                       name=conv_name_base + '2a')(input_tensor)
-    x = keras.layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2a')(x)
-    x = keras.layers.Activation('relu')(x)
+    x = tensorflow.keras.layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2a')(x)
+    x = tensorflow.keras.layers.Activation('relu')(x)
 
-    x = keras.layers.Conv2D(filters2, kernel_size, strides=strides, padding='same',
+    x = tensorflow.keras.layers.Conv2D(filters2, kernel_size, strides=strides, padding='same',
                       kernel_initializer='he_normal',
                       name=conv_name_base + '2b')(x)
-    x = keras.layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2b')(x)
-    x = keras.layers.Activation('relu')(x)
+    x = tensorflow.keras.layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2b')(x)
+    x = tensorflow.keras.layers.Activation('relu')(x)
 
-    x = keras.layers.Conv2D(filters3, (1, 1),
+    x = tensorflow.keras.layers.Conv2D(filters3, (1, 1),
                       kernel_initializer='he_normal',
                       name=conv_name_base + '2c')(x)
-    x = keras.layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2c')(x)
+    x = tensorflow.keras.layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2c')(x)
 
-    shortcut = keras.layers.MaxPooling2D(pool_size=pool_size, padding='same')(input_tensor)
-    shortcut = keras.layers.Conv2D(filters3, (1, 1), strides=(1, 1),
+    shortcut = tensorflow.keras.layers.MaxPooling2D(pool_size=pool_size, padding='same')(input_tensor)
+    shortcut = tensorflow.keras.layers.Conv2D(filters3, (1, 1), strides=(1, 1),
                              kernel_initializer='he_normal',
                              name=conv_name_base + '1')(x)
-    shortcut = keras.layers.BatchNormalization(
+    shortcut = tensorflow.keras.layers.BatchNormalization(
         axis=bn_axis, name=bn_name_base + '1')(shortcut)
 
-    x = keras.layers.add([x, shortcut])
-    x = keras.layers.Activation('relu')(x)
+    x = tensorflow.keras.layers.add([x, shortcut])
+    x = tensorflow.keras.layers.Activation('relu')(x)
     return x
 
 
@@ -122,8 +124,8 @@ def ResNet50(include_top=True,
         ValueError: in case of invalid argument for `weights`,
             or invalid input shape.
     """
-    keras.applications.resnet50.resnet50.backend = keras.backend
-    keras.applications.resnet50.resnet50.layers = keras.layers
+    keras_applications.resnet50.backend = tensorflow.keras.backend
+    keras_applications.resnet50.layers = tensorflow.keras.layers
 
     if not (weights in {'imagenet', None} or os.path.exists(weights)):
         raise ValueError('The `weights` argument should be either '
@@ -136,70 +138,70 @@ def ResNet50(include_top=True,
                          ' as true, `classes` should be 1000')
 
     # Determine proper input shape
-    input_shape = keras.applications.imagenet_utils.imagenet_utils._obtain_input_shape(input_shape,
+    input_shape = keras_applications.resnet.imagenet_utils._obtain_input_shape(input_shape,
                                       default_size=224,
                                       min_size=32,
-                                      data_format=keras.backend.image_data_format(),
+                                      data_format=tensorflow.keras.backend.image_data_format(),
                                       require_flatten=include_top,
                                       weights=weights)
 
     if input_tensor is None:
-        img_input = keras.layers.Input(shape=input_shape)
+        img_input = tensorflow.keras.layers.Input(shape=input_shape)
     else:
-        if not keras.backend.is_keras_tensor(input_tensor):
-            img_input = keras.layers.Input(tensor=input_tensor, shape=input_shape)
+        if not tensorflow.keras.backend.is_keras_tensor(input_tensor):
+            img_input = tensorflow.keras.layers.Input(tensor=input_tensor, shape=input_shape)
         else:
             img_input = input_tensor
-    if keras.backend.image_data_format() == 'channels_last':
+    if tensorflow.keras.backend.image_data_format() == 'channels_last':
         bn_axis = 3
     else:
         bn_axis = 1
 
-    x = keras.layers.ZeroPadding2D(padding=(3, 3), name='conv1_pad')(img_input)
+    x = tensorflow.keras.layers.ZeroPadding2D(padding=(3, 3), name='conv1_pad')(img_input)
 
-    x = keras.layers.Conv2D(64, (7, 7), strides=(2, 2), padding='valid', kernel_initializer='he_normal', name='conv1_t1')(x)
-    x = keras.layers.BatchNormalization(axis=bn_axis, name='bn_conv1_t1')(x)
-    x = keras.layers.Activation('relu')(x)
+    x = tensorflow.keras.layers.Conv2D(64, (7, 7), strides=(2, 2), padding='valid', kernel_initializer='he_normal', name='conv1_t1')(x)
+    x = tensorflow.keras.layers.BatchNormalization(axis=bn_axis, name='bn_conv1_t1')(x)
+    x = tensorflow.keras.layers.Activation('relu')(x)
 
-    x = keras.layers.Conv2D(64, (3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', name='conv1_t2')(x)
-    x = keras.layers.BatchNormalization(axis=bn_axis, name='bn_conv1_t2')(x)
-    x = keras.layers.Activation('relu')(x)
+    x = tensorflow.keras.layers.Conv2D(64, (3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', name='conv1_t2')(x)
+    x = tensorflow.keras.layers.BatchNormalization(axis=bn_axis, name='bn_conv1_t2')(x)
+    x = tensorflow.keras.layers.Activation('relu')(x)
 
-    x = keras.layers.Conv2D(64, (3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', name='conv1_t3')(x)
-    x = keras.layers.BatchNormalization(axis=bn_axis, name='bn_conv1_t3')(x)
-    x = keras.layers.Activation('relu')(x)
+    x = tensorflow.keras.layers.Conv2D(64, (3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', name='conv1_t3')(x)
+    x = tensorflow.keras.layers.BatchNormalization(axis=bn_axis, name='bn_conv1_t3')(x)
+    x = tensorflow.keras.layers.Activation('relu')(x)
 
-    x = keras.layers.ZeroPadding2D(padding=(1, 1), name='pool1_pad')(x)
-    x = keras.layers.MaxPooling2D((3, 3), strides=(2, 2))(x)
+    x = tensorflow.keras.layers.ZeroPadding2D(padding=(1, 1), name='pool1_pad')(x)
+    x = tensorflow.keras.layers.MaxPooling2D((3, 3), strides=(2, 2))(x)
 
     x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1), pool_size=(1, 1))
-    x = keras.applications.resnet50.resnet50.identity_block(x, 3, [64, 64, 256], stage=2, block='b')
-    x = keras.applications.resnet50.resnet50.identity_block(x, 3, [64, 64, 256], stage=2, block='c')
+    x = keras_applications.resnet50.identity_block(x, 3, [64, 64, 256], stage=2, block='b')
+    x = keras_applications.resnet50.identity_block(x, 3, [64, 64, 256], stage=2, block='c')
 
     x = conv_block(x, 3, [128, 128, 512], stage=3, block='a')
-    x = keras.applications.resnet50.resnet50.identity_block(x, 3, [128, 128, 512], stage=3, block='b')
-    x = keras.applications.resnet50.resnet50.identity_block(x, 3, [128, 128, 512], stage=3, block='c')
-    x = keras.applications.resnet50.resnet50.identity_block(x, 3, [128, 128, 512], stage=3, block='d')
+    x = keras_applications.resnet50.identity_block(x, 3, [128, 128, 512], stage=3, block='b')
+    x = keras_applications.resnet50.identity_block(x, 3, [128, 128, 512], stage=3, block='c')
+    x = keras_applications.resnet50.identity_block(x, 3, [128, 128, 512], stage=3, block='d')
 
     x = conv_block(x, 3, [256, 256, 1024], stage=4, block='a')
-    x = keras.applications.resnet50.resnet50.identity_block(x, 3, [256, 256, 1024], stage=4, block='b')
-    x = keras.applications.resnet50.resnet50.identity_block(x, 3, [256, 256, 1024], stage=4, block='c')
-    x = keras.applications.resnet50.resnet50.identity_block(x, 3, [256, 256, 1024], stage=4, block='d')
-    x = keras.applications.resnet50.resnet50.identity_block(x, 3, [256, 256, 1024], stage=4, block='e')
-    x = keras.applications.resnet50.resnet50.identity_block(x, 3, [256, 256, 1024], stage=4, block='f')
+    x = keras_applications.resnet50.identity_block(x, 3, [256, 256, 1024], stage=4, block='b')
+    x = keras_applications.resnet50.identity_block(x, 3, [256, 256, 1024], stage=4, block='c')
+    x = keras_applications.resnet50.identity_block(x, 3, [256, 256, 1024], stage=4, block='d')
+    x = keras_applications.resnet50.identity_block(x, 3, [256, 256, 1024], stage=4, block='e')
+    x = keras_applications.resnet50.identity_block(x, 3, [256, 256, 1024], stage=4, block='f')
 
     x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a')
-    x = keras.applications.resnet50.resnet50.identity_block(x, 3, [512, 512, 2048], stage=5, block='b')
-    x = keras.applications.resnet50.resnet50.identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
+    x = keras_applications.resnet50.identity_block(x, 3, [512, 512, 2048], stage=5, block='b')
+    x = keras_applications.resnet50.identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
 
     if include_top:
-        x = keras.layers.GlobalAveragePooling2D(name='avg_pool')(x)
-        x = keras.layers.Dense(classes, activation='softmax', name='fc1000')(x)
+        x = tensorflow.keras.layers.GlobalAveragePooling2D(name='avg_pool')(x)
+        x = tensorflow.keras.layers.Dense(classes, activation='softmax', name='fc1000')(x)
     else:
         if pooling == 'avg':
-            x = keras.layers.GlobalAveragePooling2D()(x)
+            x = tensorflow.keras.layers.GlobalAveragePooling2D()(x)
         elif pooling == 'max':
-            x = keras.layers.GlobalMaxPooling2D()(x)
+            x = tensorflow.keras.layers.GlobalMaxPooling2D()(x)
         else:
             warnings.warn('The output shape of `ResNet50(include_top=False)` '
                           'has been changed since Keras 2.2.0.')
@@ -207,11 +209,11 @@ def ResNet50(include_top=True,
     # Ensure that the model takes into account
     # any potential predecessors of `input_tensor`.
     if input_tensor is not None:
-        inputs = keras.utils.get_source_inputs(input_tensor)
+        inputs = tensorflow.keras.utils.get_source_inputs(input_tensor)
     else:
         inputs = img_input
     # Create model.
-    model = keras.models.Model(inputs, x, name='resnet50')
+    model = tensorflow.keras.models.Model(inputs, x, name='resnet50')
 
     return model
 
@@ -224,16 +226,16 @@ def define_model(config, dset):
         len(config["dataset"]["images"][
             "channels"])  # channels
     )
-    input_image = keras.layers.Input(input_shape)
+    input_image = tensorflow.keras.layers.Input(input_shape)
     model = ResNet50(include_top=False, weights=None, input_tensor=input_image)
-    features = keras.layers.GlobalAveragePooling2D(name="pool5")(model.layers[-1].output)
+    features = tensorflow.keras.layers.GlobalAveragePooling2D(name="pool5")(model.layers[-1].output)
 
     # 2. Create an output embedding for each target
     class_outputs = []
 
     i = 0
     for t in dset.targets:
-        y = keras.layers.Dense(t.shape[1], activation="softmax", name=t.field_name)(features)
+        y = tensorflow.keras.layers.Dense(t.shape[1], activation="softmax", name=t.field_name)(features)
         class_outputs.append(y)
         i += 1
 
@@ -241,15 +243,15 @@ def define_model(config, dset):
     loss_func = "categorical_crossentropy"
 
     # 4. Create and compile model
-    model = keras.models.Model(inputs=input_image, outputs=class_outputs)
+    model = tensorflow.keras.models.Model(inputs=input_image, outputs=class_outputs)
     ## Added weight decay following tricks reported in:
     ## https://github.com/keras-team/keras/issues/2717
-    regularizer = keras.regularizers.l2(0.00001)
+    regularizer = tensorflow.keras.regularizers.l2(0.00001)
     for layer in model.layers:
         if hasattr(layer, "kernel_regularizer"):
             setattr(layer, "kernel_regularizer", regularizer)
-    model = keras.models.model_from_json(model.to_json())
-    optimizer = keras.optimizers.SGD(lr=config["train"]["model"]["params"]["learning_rate"], momentum=0.9, nesterov=True)
+    model = tensorflow.keras.models.model_from_json(model.to_json())
+    optimizer = tensorflow.keras.optimizers.SGD(lr=config["train"]["model"]["params"]["learning_rate"], momentum=0.9, nesterov=True)
     # optimizer = keras.optimizers.Adam(lr=config["train"]["model"]["params"]["learning_rate"])
 
     return model, optimizer, loss_func

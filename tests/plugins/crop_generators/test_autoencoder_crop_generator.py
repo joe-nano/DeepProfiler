@@ -3,7 +3,10 @@ import os
 import numpy as np
 import pandas as pd
 import skimage.io
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.enable_eager_execution()
+tf.enable_resource_variables()
+tf.disable_v2_behavior()
 
 import deepprofiler.dataset.image_dataset
 import deepprofiler.dataset.metadata

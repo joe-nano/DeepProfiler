@@ -1,11 +1,10 @@
 from comet_ml import Experiment
 
-import keras
-from keras import backend as K
-from keras import objectives
-from keras.layers import *
-from keras.models import Model, Sequential
-from keras.optimizers import Adam
+import tensorflow
+from tensorflow.keras import backend as K
+from tensorflow.keras.layers import *
+from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.optimizers import Adam
 
 from deepprofiler.learning.model import DeepProfilerModel
 
@@ -23,7 +22,7 @@ def define_model(config, dset):
         config["train"]["sampling"]["box_size"],  # width
         len(config["dataset"]["images"]["channels"])  # channels
     )
-    input_image = keras.layers.Input(input_shape)
+    input_image = tensorflow.keras.layers.Input(input_shape)
 
     if config["train"]["model"]["params"]["conv_blocks"] < 1:
         raise ValueError("At least 1 convolutional block is required.")
@@ -35,9 +34,9 @@ def define_model(config, dset):
         x = BatchNormalization()(x)
         x = Activation("relu")(x)
         x = MaxPooling2D((2, 2))(x)
-    encoded_shape = x._keras_shape[1:]
+    encoded_shape = x.shape[1:]
     x = Flatten()(x)
-    flattened_shape = x._keras_shape[1:]
+    flattened_shape = x.shape[1:]
 
     # Define mean and log variance layers
     z_mean = Dense(config["train"]["model"]["params"]["latent_dim"], name="z_mean")(x)
@@ -78,7 +77,7 @@ def define_model(config, dset):
     def vae_loss(x, x_decoded_mean):
         x = K.flatten(x)
         x_decoded_mean = K.flatten(x_decoded_mean)
-        xent_loss = objectives.binary_crossentropy(x, x_decoded_mean)
+        xent_loss = tensorflow.keras.losses.binary_crossentropy(x, x_decoded_mean)
         kl_loss = - 0.5 * K.mean(1 + z_log_sigma - K.square(z_mean) - K.exp(z_log_sigma), axis=-1)
         return xent_loss + kl_loss
 

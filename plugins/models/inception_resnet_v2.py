@@ -4,7 +4,10 @@ from keras.models import Model
 from keras.layers import Input, Dense
 from keras.optimizers import Adam
 from keras import backend as K
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.enable_eager_execution()
+tf.enable_resource_variables()
+tf.disable_v2_behavior()
 
 from deepprofiler.learning.model import DeepProfilerModel
 
@@ -14,7 +17,7 @@ def define_model(config, dset):
     configuration = tf.ConfigProto()
     configuration.gpu_options.allow_growth = True
     sess = tf.Session(config=configuration)
-    K.set_session(sess)
+    tf.compat.v1.keras.backend.set_session(sess)
     
     # Load InceptionResnetV2 base architecture
     if config["profile"]["pretrained"]:

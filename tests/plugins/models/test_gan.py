@@ -1,7 +1,6 @@
 import os
 import pytest
-import keras
-
+import tensorflow
 import deepprofiler.imaging.cropping
 import deepprofiler.dataset.image_dataset
 import deepprofiler.dataset.metadata
@@ -40,10 +39,10 @@ def test_gan(config, generator, val_generator):
         len(config["dataset"]["images"]["channels"])
     )
     assert gan.latent_dim == config["train"]["model"]["params"]["latent_dim"]
-    assert isinstance(gan.generator, keras.Model)
-    assert isinstance(gan.discriminator, keras.Model)
-    assert isinstance(gan.discriminator_fixed, keras.Model)
-    assert isinstance(gan.combined, keras.Model)
+    assert isinstance(gan.generator, tensorflow.keras.Model)
+    assert isinstance(gan.discriminator, tensorflow.keras.Model)
+    assert isinstance(gan.discriminator_fixed, tensorflow.keras.Model)
+    assert isinstance(gan.combined, tensorflow.keras.Model)
     assert gan.generator in gan.combined.layers
     assert gan.discriminator not in gan.combined.layers
     assert gan.discriminator_fixed in gan.combined.layers
@@ -56,7 +55,7 @@ def test_init(config, dataset, generator, val_generator):
     dpmodel = plugins.models.gan.ModelClass(config, dataset, generator, val_generator)
     gan = plugins.models.gan.GAN(config, generator, val_generator)
     assert dpmodel.gan.__eq__(gan)
-    assert isinstance(dpmodel.feature_model, keras.Model)
+    assert isinstance(dpmodel.feature_model, tensorflow.keras.Model)
 
 
 def test_train(model, out_dir, data, locations, config, make_struct):

@@ -1,6 +1,5 @@
 import pytest
-import keras
-
+import tensorflow
 import deepprofiler.imaging.cropping
 import deepprofiler.dataset.image_dataset
 import deepprofiler.dataset.metadata
@@ -20,8 +19,8 @@ def val_generator():
 
 def test_define_model(config, dataset):
     model, optimizer, loss = plugins.models.cnn.define_model(config, dataset)
-    assert isinstance(model, keras.Model)
-    assert isinstance(optimizer, str) or isinstance(optimizer, keras.optimizers.Optimizer)
+    assert isinstance(model, tensorflow.keras.Model)
+    assert isinstance(optimizer, str) or isinstance(optimizer, tensorflow.keras.optimizers.Optimizer)
     assert isinstance(loss, str) or callable(loss)
 
 

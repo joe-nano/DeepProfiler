@@ -1,11 +1,12 @@
 import pytest
-from keras.metrics import top_k_categorical_accuracy
-from deepprofiler.learning.metric import Metric
 import plugins.metrics.top_k
 import inspect
 import os
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.enable_eager_execution()
+tf.enable_resource_variables()
+tf.disable_v2_behavior()
 import json
 
 cpu_config = tf.ConfigProto(
