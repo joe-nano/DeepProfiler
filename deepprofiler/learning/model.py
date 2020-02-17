@@ -5,12 +5,9 @@ import abc
 
 
 import comet_ml
-import tensorflow
+import keras
 import numpy as np
-import tensorflow.compat.v1 as tf
-tf.enable_eager_execution()
-tf.enable_resource_variables()
-tf.disable_v2_behavior()
+import tensorflow as tf
 
 import deepprofiler.dataset.utils
 import deepprofiler.imaging.cropping
@@ -45,51 +42,68 @@ class DeepProfilerModel(abc.ABC):
     def train(self, epoch=1, metrics=["accuracy"], verbose=1):
         # Raise ValueError if feature model isn't properly defined
         check_feature_model(self)
+
         # Print model summary
-        if verbose != 0:
-            self.feature_model.summary()
+        self.feature_model.summary()
+
         # Compile model
         self.feature_model.compile(self.optimizer, self.loss, metrics)
+
         # Create comet ml experiment
         experiment = setup_comet_ml(self)
-        # Create tf configuration
-        configuration = tf_configure(self)
-        # Start train crop generator
-        crop_session = start_crop_session(self, configuration)
-        # Start val crop generator
-        val_session, x_validation, y_validation = start_val_session(self, configuration)
-        # Create main session
-        main_session = start_main_session(configuration)
-        epochs, steps, lr_schedule_epochs, lr_schedule_lr = setup_params(self, experiment)
-        if verbose != 0:  # verbose is only 0 when optimizing hyperparameters
-            # Load weights
-            load_weights(self, epoch)
-            # Create callbacks
-            callbacks = setup_callbacks(self, lr_schedule_epochs, lr_schedule_lr, self.dset, experiment)
-        else:
-            callbacks = None
-        # Create params (epochs, steps, log model params to comet ml)
 
-        #tf.compat.v1.keras.backend.get_session().run(tf.initialize_all_variables())
+        # Create main session
+        main_session = start_main_session()
+
+        # Start val crop generator
+        x_validation, y_validation = load_validation_data(self, main_session)
+
+        # Start train crop generator
+        self.train_crop_generator.start(main_session)
+
+        # Get training parameters
+        epochs, steps, schedule_epochs, schedule_lr, freq = setup_params(self, experiment)
+
+        # Load weights
+        self.load_weights(epoch)
+
+        # Create callbacks
+        callbacks = setup_callbacks(self, schedule_epochs, schedule_lr, self.dset, experiment)
+
         # Train model
         self.feature_model.fit_generator(
-            generator=self.train_crop_generator.generate(crop_session),
+            generator=self.train_crop_generator.generate(main_session),
             steps_per_epoch=steps,
             epochs=epochs,
             callbacks=callbacks,
             verbose=verbose,
             initial_epoch=epoch - 1,
-            validation_data=(x_validation, y_validation)
+            validation_data=(x_validation, y_validation),
+            #validation_freq=freq
         ) 
             
         # Stop threads and close sessions
-        close(self, crop_session)
+        close(self, main_session)
+
         # Return the feature model and validation data
         return self.feature_model, x_validation, y_validation
 
 
+    def load_weights(self, epoch):
+        output_file = self.config["paths"]["checkpoints"] + "/checkpoint_{epoch:04d}.hdf5"
+        previous_model = output_file.format(epoch=epoch - 1)
+        if epoch >= 1 and os.path.isfile(previous_model):
+            self.feature_model.load_weights(previous_model)
+            print("Weights from previous model loaded:", previous_model)
+            return True
+        else:
+            # Initialize all tf variables
+            keras.backend.get_session().run(tf.global_variables_initializer())
+            return False
+
+
 def check_feature_model(dpmodel):
-    if "feature_model" not in vars(dpmodel) or not isinstance(dpmodel.feature_model, tensorflow.keras.Model):
+    if "feature_model" not in vars(dpmodel) or not isinstance(dpmodel.feature_model, keras.Model):
         raise ValueError("Feature model is not properly defined.")
 
 
@@ -107,59 +121,28 @@ def setup_comet_ml(dpmodel):
     return experiment
 
 
-def start_crop_session(dpmodel, configuration):
-    crop_graph = tf.Graph()
-    with crop_graph.as_default():
-#         cpu_config = tf.ConfigProto(device_count={"CPU": 1, "GPU": 0})
-#         cpu_config.gpu_options.visible_device_list = ""
-        crop_session = tf.Session(config=configuration)
-        dpmodel.train_crop_generator.start(crop_session)
-    gc.collect()
-    return crop_session
-
-
-def tf_configure(dpmodel):
+def start_main_session():
     configuration = tf.ConfigProto()
     configuration.gpu_options.allow_growth = True
-    return configuration
-
-
-def start_val_session(dpmodel, configuration):
-    crop_graph = tf.Graph()
-    with crop_graph.as_default():
-        val_session = tf.Session(config=configuration)
-        tf.compat.v1.keras.backend.set_session(val_session)
-        dpmodel.val_crop_generator.start(val_session)
-        x_validation, y_validation = deepprofiler.learning.validation.load_validation_data(
-            dpmodel.config,
-            dpmodel.dset,
-            dpmodel.val_crop_generator,
-            val_session)
-    gc.collect()
-    return val_session, x_validation, y_validation
-
-
-def start_main_session(configuration):
     main_session = tf.Session(config=configuration)
-    tf.compat.v1.keras.backend.set_session(main_session)
+    keras.backend.set_session(main_session)
     return main_session
 
 
-def load_weights(dpmodel, epoch):
-    output_file = dpmodel.config["paths"]["checkpoints"] + "/checkpoint_{epoch:04d}.hdf5"
-    previous_model = output_file.format(epoch=epoch - 1)
-    if epoch >= 1 and os.path.isfile(previous_model):
-        dpmodel.feature_model.load_weights(previous_model)
-        print("Weights from previous model loaded:", previous_model)
-    else:
-        # Initialize all tf variables to avoid tf bug
-        tf.compat.v1.keras.backend.get_session().run(tf.global_variables_initializer())
+def load_validation_data(dpmodel, session):
+    dpmodel.val_crop_generator.start(session)
+    x_validation, y_validation = deepprofiler.learning.validation.load_validation_data(
+        dpmodel.config,
+        dpmodel.dset,
+        dpmodel.val_crop_generator,
+        session)
+    return x_validation, y_validation
 
 
 def setup_callbacks(dpmodel, lr_schedule_epochs, lr_schedule_lr, dset, experiment):
     # Checkpoints
     output_file = dpmodel.config["paths"]["checkpoints"] + "/checkpoint_{epoch:04d}.hdf5"
-    callback_model_checkpoint = tensorflow.keras.callbacks.ModelCheckpoint(
+    callback_model_checkpoint = keras.callbacks.ModelCheckpoint(
         filepath=output_file,
         save_weights_only=True,
         save_best_only=False
@@ -167,10 +150,10 @@ def setup_callbacks(dpmodel, lr_schedule_epochs, lr_schedule_lr, dset, experimen
     
     # CSV Log
     csv_output = dpmodel.config["paths"]["logs"] + "/log.csv"
-    callback_csv = tensorflow.keras.callbacks.CSVLogger(filename=csv_output)
+    callback_csv = keras.callbacks.CSVLogger(filename=csv_output)
 
     # Queue stats
-    qstats = tensorflow.keras.callbacks.LambdaCallback(
+    qstats = keras.callbacks.LambdaCallback(
         on_train_begin=lambda logs: dset.show_setup(),
         on_epoch_end=lambda epoch, logs: experiment.log_metrics(dset.show_stats()) if experiment else dset.show_stats()
     )
@@ -184,7 +167,7 @@ def setup_callbacks(dpmodel, lr_schedule_epochs, lr_schedule_lr, dset, experimen
 
     # Collect all callbacks
     if lr_schedule_epochs:
-        callback_lr_schedule = tensorflow.keras.callbacks.LearningRateScheduler(lr_schedule, verbose=1)
+        callback_lr_schedule = keras.callbacks.LearningRateScheduler(lr_schedule, verbose=1)
         callbacks = [callback_model_checkpoint, callback_csv, callback_lr_schedule, qstats]
     else:
         callbacks = [callback_model_checkpoint, callback_csv, qstats]
@@ -216,7 +199,13 @@ def setup_params(dpmodel, experiment):
             lr_schedule_epochs = dpmodel.config["train"]["model"]["lr_schedule"]["epoch"]
             lr_schedule_lr = dpmodel.config["train"]["model"]["lr_schedule"]["lr"]
 
-    return epochs, steps, lr_schedule_epochs, lr_schedule_lr
+    # Validation frequency
+    if "frequency" in dpmodel.config["train"]["validation"].keys():
+        freq = dpmodel.config["train"]["validation"]["frequency"]
+    else:
+        freq = 1
+
+    return epochs, steps, lr_schedule_epochs, lr_schedule_lr, freq
 
 
 def close(dpmodel, crop_session):
