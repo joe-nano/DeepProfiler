@@ -5,9 +5,8 @@ import abc
 
 
 import comet_ml
-import keras
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 import deepprofiler.dataset.utils
 import deepprofiler.imaging.cropping
@@ -79,7 +78,6 @@ class DeepProfilerModel(abc.ABC):
             verbose=verbose,
             initial_epoch=epoch - 1,
             validation_data=(x_validation, y_validation),
-            #validation_freq=freq
         ) 
             
         # Stop threads and close sessions
@@ -98,12 +96,12 @@ class DeepProfilerModel(abc.ABC):
             return True
         else:
             # Initialize all tf variables
-            keras.backend.get_session().run(tf.global_variables_initializer())
+            tf.keras.backend.get_session().run(tf.global_variables_initializer())
             return False
 
 
 def check_feature_model(dpmodel):
-    if "feature_model" not in vars(dpmodel) or not isinstance(dpmodel.feature_model, keras.Model):
+    if "feature_model" not in vars(dpmodel) or not isinstance(dpmodel.feature_model, tf.keras.Model):
         raise ValueError("Feature model is not properly defined.")
 
 
@@ -125,7 +123,7 @@ def start_main_session():
     configuration = tf.ConfigProto()
     configuration.gpu_options.allow_growth = True
     main_session = tf.Session(config=configuration)
-    keras.backend.set_session(main_session)
+    tf.keras.backend.set_session(main_session)
     return main_session
 
 
@@ -142,7 +140,7 @@ def load_validation_data(dpmodel, session):
 def setup_callbacks(dpmodel, lr_schedule_epochs, lr_schedule_lr, dset, experiment):
     # Checkpoints
     output_file = dpmodel.config["paths"]["checkpoints"] + "/checkpoint_{epoch:04d}.hdf5"
-    callback_model_checkpoint = keras.callbacks.ModelCheckpoint(
+    callback_model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
         filepath=output_file,
         save_weights_only=True,
         save_best_only=False
@@ -150,10 +148,10 @@ def setup_callbacks(dpmodel, lr_schedule_epochs, lr_schedule_lr, dset, experimen
     
     # CSV Log
     csv_output = dpmodel.config["paths"]["logs"] + "/log.csv"
-    callback_csv = keras.callbacks.CSVLogger(filename=csv_output)
+    callback_csv = tf.keras.callbacks.CSVLogger(filename=csv_output)
 
     # Queue stats
-    qstats = keras.callbacks.LambdaCallback(
+    qstats = tf.keras.callbacks.LambdaCallback(
         on_train_begin=lambda logs: dset.show_setup(),
         on_epoch_end=lambda epoch, logs: experiment.log_metrics(dset.show_stats()) if experiment else dset.show_stats()
     )
@@ -167,7 +165,7 @@ def setup_callbacks(dpmodel, lr_schedule_epochs, lr_schedule_lr, dset, experimen
 
     # Collect all callbacks
     if lr_schedule_epochs:
-        callback_lr_schedule = keras.callbacks.LearningRateScheduler(lr_schedule, verbose=1)
+        callback_lr_schedule = tf.keras.callbacks.LearningRateScheduler(lr_schedule, verbose=1)
         callbacks = [callback_model_checkpoint, callback_csv, callback_lr_schedule, qstats]
     else:
         callbacks = [callback_model_checkpoint, callback_csv, qstats]

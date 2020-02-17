@@ -1,9 +1,9 @@
 from comet_ml import Experiment
-from keras.applications import inception_resnet_v2
-from keras.models import Model
-from keras.layers import Input, Dense
-from keras.optimizers import Adam
-from keras import backend as K
+import tensorflow
+from keras_applications import inception_resnet_v2
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.optimizers import Adam
 import tensorflow.compat.v1 as tf
 tf.enable_eager_execution()
 tf.enable_resource_variables()
