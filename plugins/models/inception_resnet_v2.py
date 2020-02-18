@@ -1,12 +1,5 @@
-from comet_ml import Experiment
-import tensorflow
-from keras_applications import inception_resnet_v2
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Dense
 from tensorflow.keras.optimizers import Adam
 import tensorflow.compat.v1 as tf
-tf.enable_eager_execution()
-tf.enable_resource_variables()
 tf.disable_v2_behavior()
 
 from deepprofiler.learning.model import DeepProfilerModel
@@ -22,22 +15,21 @@ def define_model(config, dset):
     # Load InceptionResnetV2 base architecture
     if config["profile"]["pretrained"]:
         weights = None
-        input_tensor = Input((299, 299, 3), name="input")
-        base = inception_resnet_v2.InceptionResNetV2(
+        input_tensor = tf.keras.layers.Input((299, 299, 3), name="input")
+        base = tf.keras.applications.inception_resnet_v2.InceptionResNetV2(
             include_top=True,
-            input_tensor=input_tensor
+            input_tensor=input_tensor,
         )
-        base.get_layer(index=-2).name = "global_{}_pool".format(config["train"]["model"]["params"]["pooling"])
         # Define model
         model = base
     else:
         weights = None
-        input_tensor = Input((
+        input_tensor = tf.keras.layers.Input((
             config["train"]["sampling"]["box_size"],  # height
             config["train"]["sampling"]["box_size"],  # width
             len(config["dataset"]["images"]["channels"])  # channels
         ), name="input")
-        base = inception_resnet_v2.InceptionResNetV2(
+        base = tf.keras.applications.inception_resnet_v2.InceptionResNetV2(
             include_top=False,
             weights=weights,
             input_tensor=input_tensor,
@@ -49,11 +41,11 @@ def define_model(config, dset):
         class_outputs = []
         i = 0
         for t in dset.targets:
-            y = Dense(t.shape[1], activation="softmax", name=t.field_name)(base.output)
+            y = tf.keras.layers.Dense(t.shape[1], activation="softmax", name=t.field_name)(base.output)
             class_outputs.append(y)
             i += 1
         # Define model
-        model = Model(input_tensor, class_outputs)
+        model = tf.keras.models.Model(input_tensor, class_outputs)
 
     # Define optimizer and loss
     optimizer = Adam(lr=config["train"]["model"]["params"]["learning_rate"])
