@@ -28,7 +28,7 @@ class ModelClass(DeepProfilerModel):
  
 
     ## Load a supported model
-    def get_model(self, config, input_image=None, weights=None):
+    def get_model(self, config, input_image=None, weights=None, pooling=None):
         supported_models = self.get_supported_models()
         SM = "ResNet supported models: " + ",".join([str(x) for x in supported_models.keys()])
         num_layers = config["train"]["model"]["params"]["conv_blocks"]
@@ -42,30 +42,43 @@ class ModelClass(DeepProfilerModel):
     ## Model definition
     def define_model(self, config, dset):
         # 1. Create ResNet architecture to extract features
-        input_shape = (
-            config["dataset"]["locations"]["box_size"],  # height
-            config["dataset"]["locations"]["box_size"],  # width
-            len(config["dataset"]["images"][
-                "channels"])  # channels
-        )
-        input_image = keras.layers.Input(input_shape)
-        model = self.get_model(config, input_image=input_image)
-        features = keras.layers.GlobalAveragePooling2D(name="pool5")(model.layers[-1].output)
 
-        # 2. Create an output embedding for each target
-        class_outputs = []
+        if config["profile"]["use_pretrained_input_size"]:
+            input_tensor = keras.layers.Input((224, 224, 3), name="input")
+            model = self.get_model(
+                config,
+                input_image=input_tensor,
+                weights='imagenet',
+                pooling="avg"
+            )
+            model.summary()
 
-        i = 0
-        for t in dset.targets:
-            y = keras.layers.Dense(t.shape[1], activation="softmax", name=t.field_name)(features)
-            class_outputs.append(y)
-            i += 1
+        else:
+            input_shape = (
+                config["dataset"]["locations"]["box_size"],  # height
+                config["dataset"]["locations"]["box_size"],  # width
+                len(config["dataset"]["images"][
+                    "channels"])  # channels
+            )
+            input_image = keras.layers.Input(input_shape)
+            model = self.get_model(config, input_image=input_image)
+            features = keras.layers.GlobalAveragePooling2D(name="pool5")(model.layers[-1].output)
+
+            # 2. Create an output embedding for each target
+            class_outputs = []
+
+            i = 0
+            for t in dset.targets:
+                y = keras.layers.Dense(t.shape[1], activation="softmax", name=t.field_name)(features)
+                class_outputs.append(y)
+                i += 1
+
+            # 4. Create and compile model
+            model = keras.models.Model(inputs=input_image, outputs=class_outputs)
 
         # 3. Define the loss function
         loss_func = "categorical_crossentropy"
 
-        # 4. Create and compile model
-        model = keras.models.Model(inputs=input_image, outputs=class_outputs)
         ## Added weight decay following tricks reported in:
         ## https://github.com/keras-team/keras/issues/2717
         regularizer = keras.regularizers.l2(0.00001)
@@ -73,6 +86,7 @@ class ModelClass(DeepProfilerModel):
             if hasattr(layer, "kernel_regularizer"):
                 setattr(layer, "kernel_regularizer", regularizer)
         model = keras.models.model_from_json(model.to_json())
+
         optimizer = keras.optimizers.SGD(lr=config["train"]["model"]["params"]["learning_rate"], momentum=0.9, nesterov=True)
 
         return model, optimizer, loss_func
