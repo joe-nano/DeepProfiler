@@ -1,3 +1,5 @@
+from keras.layers import BatchNormalization
+
 from deepprofiler.learning.model import DeepProfilerModel
 from deepprofiler.imaging.augmentations import AugmentationLayer
 
@@ -44,6 +46,7 @@ class ModelClass(DeepProfilerModel):
                 include_top=False, 
                 weights=weights
         )
+
         return model
  
 
@@ -79,6 +82,8 @@ class ModelClass(DeepProfilerModel):
         for layer in model.layers:
             if hasattr(layer, "kernel_regularizer"):
                 setattr(layer, "kernel_regularizer", regularizer)
+
+        keras.backend.set_learning_phase(1)
         model = keras.models.model_from_json(
                 model.to_json(), 
                 {'AugmentationLayer': AugmentationLayer}
@@ -96,6 +101,12 @@ class ModelClass(DeepProfilerModel):
     def copy_pretrained_weights(self):
         base_model = self.get_model(self.config, weights="imagenet")
         lshift = int(self.is_training) # Shift one layer to accommodate the AugmentationLayer
+
+        for layer in base_model.layers:
+            if isinstance(layer, BatchNormalization):
+                layer.trainable = True
+            else:
+                layer.trainable = False
 
         # => Transfer all weights except conv1.1
         total_layers = len(base_model.layers)
