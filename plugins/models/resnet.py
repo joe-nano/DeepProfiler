@@ -28,14 +28,16 @@ class ModelClass(DeepProfilerModel):
  
 
     ## Load a supported model
-    def get_model(self, config, input_image=None, weights=None, pooling=None):
+    def get_model(self, config, input_image=None, weights=None, pooling=None, include_top=False):
         supported_models = self.get_supported_models()
         SM = "ResNet supported models: " + ",".join([str(x) for x in supported_models.keys()])
         num_layers = config["train"]["model"]["params"]["conv_blocks"]
         error_msg = str(num_layers) + " conv_blocks not in " + SM
         assert num_layers in supported_models.keys(), error_msg
-        
-        model = supported_models[num_layers](input_tensor=input_image, include_top=False, weights=weights)
+        if pooling is not None:
+            model = supported_models[num_layers](input_tensor=input_image, pooling=pooling, include_top=include_top, weights=weights)
+        else:
+            model = supported_models[num_layers](input_tensor=input_image, include_top=include_top, weights=weights)
         return model
  
 
@@ -49,7 +51,8 @@ class ModelClass(DeepProfilerModel):
                 config,
                 input_image=input_tensor,
                 weights='imagenet',
-                pooling="avg"
+                pooling="avg",
+                include_top=True
             )
             model.summary()
 
