@@ -25,7 +25,7 @@ class ModelClass(DeepProfilerModel):
             101: keras.applications.resnet_v2.ResNet101V2,
             152: keras.applications.resnet_v2.ResNet152V2,
         }
- 
+
 
     ## Load a supported model
     def get_model(self, config, input_image=None, weights=None, pooling=None, include_top=False):
@@ -39,7 +39,7 @@ class ModelClass(DeepProfilerModel):
         else:
             model = supported_models[num_layers](input_tensor=input_image, include_top=include_top, weights=weights)
         return model
- 
+
 
     ## Model definition
     def define_model(self, config, dset):

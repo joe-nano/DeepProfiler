@@ -33,9 +33,7 @@ class Profile(object):
         # Main session configuration
         self.profile_crop_generator.start(K.get_session())
         # Create feature extractor
-        if self.config["profile"]["checkpoint"] is not None and \
-                ("use_pretrained_input_size" not in self.config["profile"].keys()
-                 or self.config["profile"]["use_pretrained_input_size"] is False):
+        if self.config["profile"]["checkpoint"] != "None":
             checkpoint = self.config["paths"]["checkpoints"]+"/"+self.config["profile"]["checkpoint"]
             try:
                 self.dpmodel.feature_model.load_weights(checkpoint)
@@ -43,9 +41,6 @@ class Profile(object):
                 print("Loading weights without classifier (different number of classes)")
                 self.dpmodel.feature_model.layers[-1].name = "classifier"
                 self.dpmodel.feature_model.load_weights(checkpoint, by_name=True)
-        elif "use_pretrained_input_size" in self.config["profile"].keys() and \
-                self.config["profile"]["use_pretrained_input_size"] is False:
-            self.dpmodel.copy_pretrained_weights()
 
 
         self.feat_extractor = keras.Model(
