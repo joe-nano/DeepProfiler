@@ -9,7 +9,7 @@ from deepprofiler.learning.model import DeepProfilerModel
 
 class ModelClass(DeepProfilerModel):
     def __init__(self, config, dset, generator, val_generator):
-        super(ModelClass, self).__init__(config, dset, generator, val_generator)
+        super(ModelClass, self).__init__(config, dset, generator, val_generator, is_training=True)
         self.feature_model, self.optimizer, self.loss = self.define_model(config, dset)
 
 
@@ -48,24 +48,40 @@ class ModelClass(DeepProfilerModel):
             model = supported_models[num_layers](input_tensor=input_tensor, include_top=True, weights='imagenet', pooling='avg')
             model.summary()
         else:
-            input_tensor = Input((
+            input_shape = (
                 config["dataset"]["locations"]["box_size"],  # height
                 config["dataset"]["locations"]["box_size"],  # width
-                len(config["dataset"]["images"]["channels"])  # channels
-            ), name="input")
-            base = supported_models[num_layers](input_tensor=input_tensor, include_top=False, weights=None, pooling='avg', classes=dset.targets[0].shape[1])
-            # Create output embedding for each target
+                len(config["dataset"]["images"][
+                        "channels"])  # channels
+            )
+            input_image = keras.layers.Input(input_shape)
+            model = self.get_model(config, input_image=input_image)
+            features = keras.layers.GlobalAveragePooling2D(name="pool5")(model.layers[-1].output)
+
+            # 2. Create an output embedding for each target
             class_outputs = []
+
             i = 0
             for t in dset.targets:
-                y = Dense(t.shape[1], activation="softmax", name=t.field_name)(base.output)
+                y = keras.layers.Dense(t.shape[1], activation="softmax", name=t.field_name)(features)
                 class_outputs.append(y)
                 i += 1
-            # Define model
-            model = Model(input_tensor, class_outputs)
 
-        # Define optimizer and loss
-        optimizer = Adam(lr=config["train"]["model"]["params"]["learning_rate"])
-        loss = "categorical_crossentropy"
+            # 4. Create and compile model
+            model = keras.models.Model(inputs=input_image, outputs=class_outputs)
 
-        return model, optimizer, loss
+        # 3. Define the loss function
+        loss_func = "categorical_crossentropy"
+
+        ## Added weight decay following tricks reported in:
+        ## https://github.com/keras-team/keras/issues/2717
+        regularizer = keras.regularizers.l2(0.00001)
+        for layer in model.layers:
+            if hasattr(layer, "kernel_regularizer"):
+                setattr(layer, "kernel_regularizer", regularizer)
+        model = keras.models.model_from_json(model.to_json())
+
+        optimizer = keras.optimizers.SGD(lr=config["train"]["model"]["params"]["learning_rate"], momentum=0.9,
+                                         nesterov=True)
+
+        return model, optimizer, loss_func
